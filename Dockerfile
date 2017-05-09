@@ -2,10 +2,6 @@ FROM ubuntu:latest
 MAINTAINER John Parra <newkrux@gmail.com>
 
 ENV DEBIAN_FRONTEND noninteractive
-#ARG http_proxy
-#ARG https_proxy
-#ENV http_proxy ${http_proxy:- }
-#ENV https_proxy ${https_proxy:- }
 RUN echo $http_proxy
 RUN apt-get -y update && \
     apt-get -y upgrade && \
