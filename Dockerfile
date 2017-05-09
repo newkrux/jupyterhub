@@ -1,44 +1,23 @@
-# An incomplete base Docker image for running JupyterHub
-#
-# Add your configuration to create a complete derivative Docker image.
-#
-# Include your configuration settings by starting with one of two options:
-#
-# Option 1:
-#
-# FROM jupyterhub/jupyterhub:latest
-#
-# And put your configuration file jupyterhub_config.py in /srv/jupyterhub/jupyterhub_config.py.
-#
-# Option 2:
-#
-# Or you can create your jupyterhub config and database on the host machine, and mount it with:
-#
-# docker run -v $PWD:/srv/jupyterhub -t jupyterhub/jupyterhub
-#
-# NOTE
-# If you base on jupyterhub/jupyterhub-onbuild
-# your jupyterhub_config.py will be added automatically
-# from your docker directory.
+FROM ubuntu:latest
+MAINTAINER John Parra <newkrux@gmail.com>
 
-FROM debian:jessie
-MAINTAINER Jupyter Project <jupyter@googlegroups.com>
-
-# install nodejs, utf8 locale, set CDN because default httpredir is unreliable
 ENV DEBIAN_FRONTEND noninteractive
-RUN REPO=http://cdn-fastly.deb.debian.org && \
-    echo "deb $REPO/debian jessie main\ndeb $REPO/debian-security jessie/updates main" > /etc/apt/sources.list && \
-    apt-get -y update && \
+#ARG http_proxy
+#ARG https_proxy
+#ENV http_proxy ${http_proxy:- }
+#ENV https_proxy ${https_proxy:- }
+RUN echo $http_proxy
+RUN apt-get -y update && \
     apt-get -y upgrade && \
-    apt-get -y install wget locales git bzip2 &&\
-    /usr/sbin/update-locale LANG=C.UTF-8 && \
-    locale-gen C.UTF-8 && \
+    apt-get -y install wget locales git bzip2 scilab julia octave texlive texlive-xetex gnuplot python-software-properties software-properties-common  apt-transport-https libcurl4-openssl-dev libssl-dev python-pip&& \ 
+    add-apt-repository 'deb [arch=amd64,i386] https://cran.rstudio.com/bin/linux/ubuntu xenial/'&& \
+    apt-key adv --keyserver keyserver.ubuntu.com --recv-keys E084DAB9 && \
+    apt-get update -y && apt-get -y install r-base && \
     apt-get remove -y locales && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 ENV LANG C.UTF-8
 
-# install Python + NodeJS with conda
 RUN wget -q https://repo.continuum.io/miniconda/Miniconda3-4.2.12-Linux-x86_64.sh -O /tmp/miniconda.sh  && \
     echo 'd0c7c71cc5659e54ab51f2005a8d96f3 */tmp/miniconda.sh' | md5sum -c - && \
     bash /tmp/miniconda.sh -f -b -p /opt/conda && \
@@ -52,8 +31,18 @@ WORKDIR /src/jupyterhub
 
 RUN python setup.py js && pip install . && \
     rm -rf $PWD ~/.cache ~/.npm
-
+RUN pip install jupyter numpy scipy bokeh matplotlib scikit-learn pandas seaborn octave_kernel pandoc tensorflow scilab_kernel scilab2py 
+RUN python -m octave_kernel.install
 RUN mkdir -p /srv/jupyterhub/
+RUN python -m scilab_kernel.install
+COPY installR.r /srv/jupyterhub/
+RUN Rscript /srv/jupyterhub/installR.r
+COPY installJulia.jl /srv/jupyterhub/
+RUN pip2 install --upgrade pip
+RUN python2.7 -m pip install ipykernel
+RUN python2 -m ipykernel install --user
+RUN julia /srv/jupyterhub/installJulia.jl
+RUN wget https://github.com/jgm/pandoc/releases/download/1.19.2.1/pandoc-1.19.2.1-1-amd64.deb &&dpkg -i pandoc-1.19.2.1-1-amd64.deb
 WORKDIR /srv/jupyterhub/
 EXPOSE 8000
 
